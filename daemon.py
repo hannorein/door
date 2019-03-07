@@ -18,11 +18,22 @@ last_movement_for_moon = 0
 last_sound = 0
 ring_alarm = -1
 
+def increment_counter(filename):
+    try:
+        with open(filename, 'r' ) as fle:
+            counter = int( fle.readline() ) + 1
+    except:
+        counter = 0
+    with open(filename, 'w' ) as fle:
+        fle.write( str(counter) )
+
+
 def detect_sound(channel):
     global last_sound
     last_sound = time.time()
     with open("sound_lastminute.txt", "w") as f:
         f.write("1")
+    increment_counter("sound_counter.txt")
 GPIO.add_event_detect(27, GPIO.BOTH, callback=detect_sound)
 
 def detect_movement(channel):
@@ -32,22 +43,26 @@ def detect_movement(channel):
     last_movement_for_moon = time.time()
     with open("movement_lastminute.txt", "w") as f:
         f.write("1")
+    increment_counter("movement_counter.txt")
 GPIO.add_event_detect(17, GPIO.BOTH, callback=detect_movement)
 
 def detect_door(channel):
     global ring_alarm 
     #print("dppr cjhamged", GPIO.input(4))
-    with open("door_lastminute.txt", "w") as f:
-        if GPIO.input(4)==0:
-            # door opens
-            if GPIO.input(24)==0 and GPIO.input(25)==1: # not unlocked
-                if ring_alarm==-1: # no repeat
-                    ring_alarm = 35
-            f.write("1")
-        else:
-            # door closes
-            ring_alarm = 0
+    if GPIO.input(4)==1:
+        # door closes
+        ring_alarm = 0
+        with open("door_lastminute.txt", "w") as f:
             f.write("0")
+    if GPIO.input(4)==0: # door open
+        if GPIO.input(24)==0 and GPIO.input(25)==1: # not unlocked
+            time.sleep(0.2)
+            if GPIO.input(4)==0: # door still open (not a fluke)
+                if ring_alarm==-1: # no repeat
+                    ring_alarm = 55
+                    increment_counter("alarm_counter.txt")
+        with open("door_lastminute.txt", "w") as f:
+            f.write("1")
 GPIO.add_event_detect(4, GPIO.BOTH, callback=detect_door)
 
 
